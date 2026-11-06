@@ -12,7 +12,7 @@ COPY . .
 RUN npm run build
 
 # ЭТАП 2: Продакшн (Production)
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
