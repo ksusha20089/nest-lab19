@@ -1,0 +1,58 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Получение исходного кода
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Настройка Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # 3. Установка зависимостей
+      - name: Install dependencies
+        run: npm ci
+
+      # 3.5. ЗАПУСК ТЕСТОВ (Новый шаг)
+      - name: Run tests
+        run: npm run test -- --passWithNoTests
+        # Примечание: --passWithNoTests добавит успех, если тестов нет. 
+        # Если тесты есть и падают, шаг завершится с ошибкой, и пайплайн остановится.
+
+      # 4. Сборка приложения
+      - name: Build application
+        run: npm run build
+
+      # 5. Сборка Docker-образа
+      - name: Build Docker image
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/my-nest-app:latest .
+
+      # 6. Вход в Docker Hub и отправка образа
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Push Docker image
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/my-nest-app:latest
+
+      # 7. Развертывание на Heroku
+      - name: Deploy to Heroku
+        uses: akhileshns/heroku-deploy@v3.13.15
+        with:
+          heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+          heroku_app_name: ${{ secrets.HEROKU_APP_NAME }}
+          heroku_email: ${{ secrets.HEROKU_EMAIL }}
+          usedocker: true
